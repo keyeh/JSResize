@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>test</title>
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <script src="../canvas_resize.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/4.3.0/dropzone.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/4.3.0/dropzone.css" rel="stylesheet" type="text/css">
+
+</head>
+
+<body>
+    <div class="w-container">
+        <h1>High Quality Image Scaling</h1>
+        <h3>Downscale images in your browser without uploading them to a server</h3>
+        <p>Browser's native canvas.drawImage() method uses the nearest-neighbor algorithm which is very fast but produces low
+            quality images (with aliasing and Moiré patterns, etc.) For higher quality, a different algorithm should be used
+            -- this page demos downscaling using averages, similar to the box sampling algorithm. Canvas
+        </p>
+    </div>
+    <div class="w-container">
+        <div class="w-row">
+            <div class="w-col w-col-6">
+                <h3>Options</h3>
+                <span>Max Size in pixels:</span>
+                <input id="maxSize" value="250">
+                <br/>
+                <br/>
+                <span>JPEG Quality (0-1):</span>
+                <input id="quality" value="0.75">
+                <h3>Input Image</h3>
+                <form action="/" class="dropzone" id="my-awesome-dropzone"></form>
+            </div>
+            <div class="w-col w-col-6">
+                <h3>Result</h3>
+                <pre id="log"></pre>
+                <a id="reset" style="display:none" href="index.html" class="w-button">Reset</a>
+            </div>
+        </div>
+    </div>
+    <div class="w-container">
+        <h2>Preview</h2>
+        <div class="w-row">
+            <div class="w-col w-col-6">
+                <h6>Fast/Low Quality</h6>
+                <canvas id="drawimage"></canvas>
+            </div>
+            <div class="w-col w-col-6">
+                <h6>Slow/High Quality</h6>
+                <a id="download" style="display:none" class="w-button">Download JPEG</a>
+                <br/>
+                <br/>
+                <canvas id="result"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="original" style="display: none"></canvas>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" type="text/javascript"></script>
+    <script>
+
+        Dropzone.options.myAwesomeDropzone = {
+            autoProcessQueue: false,
+            acceptedFiles: 'image/*',
+            maxFiles: 1,
+            init: function () {
+                this.on("addedfile", readImage);
+            }
+        };
+
+
+
+        var originalCanvas = $("#original")[0];
+        var originalContext = originalCanvas.getContext('2d');
+
+        var crappyCanvas = $("#drawimage")[0];
+        var crappyContext = crappyCanvas.getContext('2d');
+
+        var goodCanvas = $("#result")[0]
+        var goodContext = goodCanvas.getContext('2d');
+
+        var $maxSize = $('#maxSize');
+
+        function readImage(file) {
+            var FR = new FileReader();
+            FR.onload = function (e) {
+
+                var img = new Image();
+                img.onload = function () {
+                    draw(img);
+                };
+                img.src = e.target.result;
+            };
+            FR.readAsDataURL(file);
+        }
+
+        function draw(img) {
+            originalCanvas.width = img.width;
+            originalCanvas.height = img.height;
+            $("#log").append("Input image size: " + img.width + "x" + img.height + " px\n")
+            maxSize = parseInt($maxSize.val());
+            if (maxSize > originalCanvas.width || maxSize > originalCanvas.height) alert('This is for downscaling only');
+
+            if (img.width === img.height) {
+                crappyCanvas.width = goodCanvas.width = maxSize
+                crappyCanvas.height = goodCanvas.height = maxSize
+            } else if (img.width > img.height) {
+                crappyCanvas.width = goodCanvas.width = maxSize
+                crappyCanvas.height = goodCanvas.height = Math.floor(img.height * maxSize / img.width);
+            } else if (img.width < img.height) {
+                crappyCanvas.height = goodCanvas.height = maxSize
+                crappyCanvas.width = goodCanvas.width = Math.floor(img.width * maxSize / img.height);
+            }
+            $("#log").append("Output image size: " + goodCanvas.width + "x" + goodCanvas.height + " px\n\n")
+            originalContext.drawImage(img, 0, 0);
+            crappyContext.drawImage(img, 0, 0, crappyCanvas.width, crappyCanvas.height);
+
+            $("#log").append("Processing...\n")
+            var start = new Date().getTime();
+            canvasResize(originalCanvas, goodCanvas, function () {
+                var elapsed = new Date().getTime() - start;
+                $("#log").append("Completed in " + elapsed + "ms (" + elapsed / 1000 + "s)")
+                $("#download").show()
+                $("#reset").show()
+                $processing.remove();
+            });
+        }
+
+        document.getElementById('download').addEventListener('click', function () {
+            var qual = parseFloat($('#quality').val());
+            alert(qual)
+            this.href = document.getElementById("result").toDataURL('image/jpeg', qual);
+            this.download = "output.jpg";
+        }, false);
+
+    </script>
+</body>
+
+</html>
